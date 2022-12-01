@@ -16,5 +16,7 @@ go build -tags netgo -ldflags '-s -w' -o whypfs-gw
 ```
 
 # Test
-https://localhost:1313/gw/ipfs/<CID>
+https://localhost:1313/gw/<CID>
+https://localhost:1313/gw/file/<CID>
+https://localhost:1313/gw/dir/<CID>
 

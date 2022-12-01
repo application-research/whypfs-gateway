@@ -3,12 +3,14 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/application-research/whypfs-core"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-path"
+	"github.com/ipfs/go-unixfs"
 	"github.com/ipfs/go-unixfsnode"
 	"github.com/ipld/go-ipld-prime"
 	"io"
@@ -91,22 +93,22 @@ func (gw *GatewayHandler) serveUnixfs(ctx context.Context, cc cid.Cid, w http.Re
 		return err
 	}
 	//
-	//switch nd := nd.(type) {
-	//case *merkledag.ProtoNode:
-	//	n, err := unixfs.FSNodeFromBytes(nd.Data())
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if n.IsDir() {
-	//		return gw.serveUnixfsDir(ctx, nd, w, req)
-	//	}
-	//	if n.Type() == unixfs.TSymlink {
-	//		return fmt.Errorf("symlinks not supported")
-	//	}
-	//case *merkledag.RawNode:
-	//default:
-	//	return errors.New("unknown node type")
-	//}
+	switch nd := nd.(type) {
+	case *merkledag.ProtoNode:
+		n, err := unixfs.FSNodeFromBytes(nd.Data())
+		if err != nil {
+			return err
+		}
+		if n.IsDir() {
+			return gw.serveUnixfsDir(ctx, nd, w, req)
+		}
+		if n.Type() == unixfs.TSymlink {
+			return fmt.Errorf("symlinks not supported")
+		}
+	case *merkledag.RawNode:
+	default:
+		return errors.New("unknown node type")
+	}
 	fmt.Println("serving unixfs", cc)
 	dr, err := uio.NewDagReader(ctx, nd, gw.dserv)
 	if err != nil {

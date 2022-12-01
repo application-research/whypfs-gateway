@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 	whypfs "github.com/application-research/whypfs-core"
+	cid2 "github.com/ipfs/go-cid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"io"
 	_ "net/http"
 	"os"
 	"os/signal"
@@ -50,19 +52,12 @@ func GatewayRoutersConfig() {
 	defer cancel()
 
 	whypfsPeer, err := whypfs.NewNode(whypfs.NewNodeParams{
-		Ctx: ctx,
+		Ctx:       ctx,
+		Datastore: whypfs.NewInMemoryDatastore(),
 	})
 
 	whypfsPeer.BootstrapPeers(whypfs.DefaultBootstrapPeers())
-	//samplePeer, err := multiaddr.NewMultiaddr("/ip4/145.40.93.107/tcp/6745/p2p/12D3KooWBUriTeu6YoJsuSg5gCvEecim9xKdZaW8fE54LUzmWJn7")
-	//pinfo2, err := peer.AddrInfoFromP2pAddr(samplePeer)
-	//whypfsPeer.BootstrapPeers([]peer.AddrInfo{*pinfo2})
-	//
-	//content := []byte("letsrebuildtolearnnewthings!")
-	//buf := bytes.NewReader(content)
-	//// bafybeiawc5enlmxtwdbnts3mragh5eyhl3wn5qekvimw72igdj45lixbo4
-	//n, err := whypfsPeer.AddPinFile(context.Background(), buf, nil) // default configurations
-	//fmt.Println(n.Cid().String())
+
 	node = whypfsPeer
 
 	gw = gateway.NewGatewayHandler(node)
@@ -72,9 +67,77 @@ func GatewayRoutersConfig() {
 
 	// Routes
 	e.GET("/gw/:path", GatewayResolverCheckHandler)
+	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
+	e.GET("/gw/file/:path", GatewayFileResolverCheckHandler)
+
+	// Upload for testing
+	e.POST("/upload", func(c echo.Context) error {
+		file, err := c.FormFile("file")
+		if err != nil {
+			return err
+		}
+		src, err := file.Open()
+		if err != nil {
+			return err
+		}
+
+		addNode, err := node.AddPinFile(c.Request().Context(), src, nil)
+		if err != nil {
+			return err
+		}
+		c.Response().Write([]byte(addNode.Cid().String()))
+		return nil
+	})
 
 	// Start server
 	e.Logger.Fatal(e.Start("0.0.0.0:1313"))
+}
+
+func GatewayDirResolverCheckHandler(c echo.Context) error {
+	p := c.Param("path")
+	req := c.Request().Clone(c.Request().Context())
+	req.URL.Path = p
+
+	fmt.Printf("Request path: " + p)
+	cid, err := cid2.Decode(p)
+
+	if err != nil {
+		panic(err)
+	}
+	//	 check if file or dir.
+
+	rscDir, err := node.GetDirectoryWithCid(c.Request().Context(), cid)
+	if err != nil {
+		panic(err)
+	}
+
+	rscDir.GetNode()
+
+	c.Response().Write([]byte("nice dir"))
+	return nil
+}
+
+func GatewayFileResolverCheckHandler(c echo.Context) error {
+	p := c.Param("path")
+	req := c.Request().Clone(c.Request().Context())
+	req.URL.Path = p
+
+	fmt.Printf("Request path: " + p)
+	cid, err := cid2.Decode(p)
+
+	if err != nil {
+		panic(err)
+	}
+	//	 check if file or dir.
+	rsc, err := node.GetFile(c.Request().Context(), cid)
+	if err != nil {
+		panic(err)
+	}
+
+	content, err := io.ReadAll(rsc)
+
+	c.Response().Write(content)
+	return nil
 }
 
 // It takes a request, and forwards it to the gateway
@@ -83,6 +146,27 @@ func GatewayResolverCheckHandler(c echo.Context) error {
 	req := c.Request().Clone(c.Request().Context())
 	req.URL.Path = p
 
-	gw.ServeHTTP(c.Response(), req)
+	fmt.Printf("Request path: " + p)
+	cid, err := cid2.Decode(p)
+
+	if err != nil {
+		panic(err)
+	}
+
+	rscDir, err := node.GetDirectoryWithCid(c.Request().Context(), cid)
+	if err != nil {
+		// 	check if file.
+		rscFile, err := node.GetFile(c.Request().Context(), cid)
+		content, err := io.ReadAll(rscFile)
+		c.Response().Write(content)
+		return nil
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	rscDir.GetNode()
+
+	c.Response().Write([]byte("nice dir"))
 	return nil
 }

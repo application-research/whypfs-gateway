@@ -3,7 +3,7 @@ module whypfs-gateway
 go 1.19
 
 require (
-	github.com/application-research/whypfs-core v0.1.1-0.20221126205625-107d1921e43a
+	github.com/application-research/whypfs-core v0.1.1-0.20221201142932-3f0670fad0fb
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/ipfs/go-blockservice v0.4.0
 	github.com/ipfs/go-cid v0.3.2
