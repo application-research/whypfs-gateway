@@ -16,7 +16,11 @@ go build -tags netgo -ldflags '-s -w' -o whypfs-gw
 ```
 
 # Test
-https://localhost:1313/gw/<CID>
-https://localhost:1313/gw/file/<CID>
-https://localhost:1313/gw/dir/<CID>
+- https://localhost:1313/gw/<CID>
+- https://localhost:1313/gw/file/<CID>
+- https://localhost:1313/gw/dir/<CID>
 
+# Serve files
+![image](https://user-images.githubusercontent.com/4479171/205086971-5b3a67ae-3ac3-42f9-961a-0ef22fae5f32.png)
+
+# Serve Dirs (WIP)
