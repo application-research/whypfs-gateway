@@ -144,13 +144,21 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 	}
 	//	 check if file or dir.
 	rsc, err := node.GetFile(c.Request().Context(), cid)
+
 	if err != nil {
 		panic(err)
 	}
-
 	content, err := io.ReadAll(rsc)
-
+	if err != nil {
+		panic(err)
+	}
 	c.Response().Write(content)
+	fmt.Println("DELETING: ---- " + cid.String())
+	err = node.Blockstore.DeleteBlock(c.Request().Context(), cid) // delete the block after serving it. Don't need to keep it if it's on AR!
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("DELETED: --- " + cid.String())
 	return nil
 }
 
