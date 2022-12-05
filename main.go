@@ -16,6 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/xerrors"
+	"html/template"
 	"io"
 	"net/http"
 	_ "net/http"
@@ -79,8 +80,8 @@ func GatewayRoutersConfig() {
 
 	// Routes
 	//e.GET("/gw/:path", OriginalGatewayHandler)
-	e.GET("/gw//ipfs/:path", GatewayResolverCheckHandler)
-	e.GET("/gw/:path", GatewayResolverCheckHandler)
+	e.GET("/gw/ipfs/:path", GatewayResolverCheckHandler)
+	e.GET("/gw/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
 	e.GET("/gw/file/:path", GatewayFileResolverCheckHandler)
 
@@ -153,31 +154,42 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 		panic(err)
 	}
 	c.Response().Write(content)
-	fmt.Println("DELETING: ---- " + cid.String())
-	err = node.Blockstore.DeleteBlock(c.Request().Context(), cid) // delete the block after serving it. Don't need to keep it if it's on AR!
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("DELETED: --- " + cid.String())
+	// This works but let's comment it out. We need the gateway to have hot cache at least!
+	//fmt.Println("DELETING: ---- " + cid.String())
+	//err = node.Blockstore.DeleteBlock(c.Request().Context(), cid) // delete the block after serving it. Don't need to keep it if it's on AR!
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println("DELETED: --- " + cid.String())
 	return nil
 }
 
 // It takes a request, and forwards it to the gateway
 func GatewayResolverCheckHandler(c echo.Context) error {
+	return nil
+}
+func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 	ctx := c.Request().Context()
 	p := c.Param("path")
 	req := c.Request().Clone(c.Request().Context())
 	req.URL.Path = p
 
 	sp := strings.Split(p, "/")
+
+	fmt.Println(">>>", len(sp))
+
 	cid, err := cid2.Decode(sp[0])
 	nd, err := node.Get(c.Request().Context(), cid)
+
+	if err != nil {
+		panic(err)
+	}
 
 	switch nd := nd.(type) {
 	case *merkledag.ProtoNode:
 		n, err := unixfs.FSNodeFromBytes(nd.Data())
 		if err != nil {
-			return err
+			panic(err)
 		}
 		if n.IsDir() {
 			return ServeDir(ctx, nd, c.Response().Writer, req)
@@ -189,7 +201,7 @@ func GatewayResolverCheckHandler(c echo.Context) error {
 	default:
 		return errors.New("unknown node type")
 	}
-	fmt.Println("serving unixfs", cid)
+
 	dr, err := uio.NewDagReader(ctx, nd, node.DAGService)
 	if err != nil {
 		return err
@@ -202,6 +214,16 @@ func GatewayResolverCheckHandler(c echo.Context) error {
 
 	http.ServeContent(c.Response().Writer, req, cid.String(), time.Time{}, dr)
 	return nil
+}
+
+type Context struct {
+	CustomLinks []CustomLinks
+}
+
+type CustomLinks struct {
+	Href     string
+	HrefCid  string
+	LinkName string
 }
 
 func ServeDir(ctx context.Context, n mdagipld.Node, w http.ResponseWriter, req *http.Request) error {
@@ -227,19 +249,32 @@ func ServeDir(ctx context.Context, n mdagipld.Node, w http.ResponseWriter, req *
 
 	}
 
-	fmt.Fprintf(w, "<html><body><ul>")
+	templates, err := template.ParseFiles("templates/dir.html")
+	if err != nil {
+		return err
+	}
+
+	links := make([]CustomLinks, 0)
+	templates.Lookup("dir.html")
+
+	//	fmt.Fprintf(w, "<html><body><ul>") // huh
 
 	requestURI, err := url.ParseRequestURI(req.RequestURI)
 
 	if err := dir.ForEachLink(ctx, func(lnk *mdagipld.Link) error {
 		href := gopath.Join(requestURI.Path, lnk.Name)
-		fmt.Fprintf(w, "<li><a href=\"%s\">%s</a></li>", href, lnk.Name)
+		hrefCid := lnk.Cid.String()
+
+		links = append(links, CustomLinks{Href: href, HrefCid: hrefCid, LinkName: lnk.Name})
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(w, "</ul></body></html>")
+	//fmt.Fprintf(w, "</ul></body></html>")
+	Context := Context{CustomLinks: links}
+	templates.Execute(w, Context)
+
 	return nil
 }
 

@@ -1,0 +1,124 @@
+<html>
+<head>
+    <title>Estuary CID Files</title>
+</head>
+<script type="text/javascript">
+    $(document).ready(function() {
+        $(".sub-list").hide();
+
+    });
+
+    $("li").on("click", function() {
+        var currentSubList = $(this).next();
+
+        $(this).children().toggleClass("active");
+        // currentSubList.toggleClass("hidden");
+        if ( currentSubList.hasClass("sub-list") ) {
+            currentSubList.slideToggle();
+        }
+    });
+</script>
+<style type="text/css">
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+.wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 100vh;
+    background-color: #dedede;
+}
+
+ul {
+    display: table;
+    color: #fff;
+}
+
+ul.main-list {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    font-weight: 500;
+    font-size: 20px;
+    line-height: 22px;
+    letter-spacing: 1px;
+    border-radius: 3px;
+    overflow: hidden;
+    width: 90%;
+    margin: 30px 0 30px 0;
+    box-shadow: 0px 10px 40px 0px rgba(0,0,0,0.15);
+}
+
+ul.sub-list {
+    background-color: #fff;
+    font-weight: 100;
+    font-size: 16px;
+    letter-spacing: 1px;
+    width: 100%;
+}
+
+ul.sub-list {
+    display: block;
+}
+
+li {
+    background-color: #0fbd66;
+    padding: 20px 23px 20px 23px;
+    margin: 0 0 0 0;
+    cursor: pointer;
+    transition: all 80ms ease-in-out;
+}
+
+.sub-list li {
+    background-color: #367d5a;
+    padding-left: 54px;
+}
+
+.main-list li:hover {
+    background-color: #0ea459;
+    transition: all 50ms ease-in-out;
+}
+
+li:active {
+    color: #000 !important;
+}
+
+.indicator {
+    width: 5px;
+    height: 5px;
+    margin: 0 10px 0 0;
+    border-radius: 100%;
+    border: 3px #fff solid;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    display: inline-block;
+    transition: all 200ms ease-in-out;
+}
+
+.indicator.active {
+    background-color: #fff;
+}
+
+
+</style>
+
+<body>
+
+    <div class="wrapper">
+        <ul class="main-list">
+            <li>
+            {{ range .CustomLinks }}
+                <a href="{{ .HrefCid }}" target="_blank"><div className="indicator">{{ .LinkName }}</div></a>
+            {{ end }}
+                </div>
+            </li>
+            <li>
+                <div class="indicator">
+                </div>
+                List item 1
+            </li>
+        </ul>
+    </div>
+</body>
+</html>
