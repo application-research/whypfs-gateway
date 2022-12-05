@@ -80,7 +80,7 @@ func GatewayRoutersConfig() {
 
 	// Routes
 	//e.GET("/gw/:path", OriginalGatewayHandler)
-	e.GET("/gw/ipfs/:path", GatewayResolverCheckHandler)
+	e.GET("/gw/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
 	e.GET("/gw/file/:path", GatewayFileResolverCheckHandler)
@@ -164,10 +164,7 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 	return nil
 }
 
-// It takes a request, and forwards it to the gateway
-func GatewayResolverCheckHandler(c echo.Context) error {
-	return nil
-}
+// `GatewayResolverCheckHandlerDirectPath` is a function that takes a `echo.Context` and returns an `error`
 func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 	ctx := c.Request().Context()
 	p := c.Param("path")
@@ -175,9 +172,6 @@ func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 	req.URL.Path = p
 
 	sp := strings.Split(p, "/")
-
-	fmt.Println(">>>", len(sp))
-
 	cid, err := cid2.Decode(sp[0])
 	nd, err := node.Get(c.Request().Context(), cid)
 
@@ -224,6 +218,7 @@ type CustomLinks struct {
 	Href     string
 	HrefCid  string
 	LinkName string
+	Size     string
 }
 
 func ServeDir(ctx context.Context, n mdagipld.Node, w http.ResponseWriter, req *http.Request) error {
@@ -256,8 +251,6 @@ func ServeDir(ctx context.Context, n mdagipld.Node, w http.ResponseWriter, req *
 
 	links := make([]CustomLinks, 0)
 	templates.Lookup("dir.html")
-
-	//	fmt.Fprintf(w, "<html><body><ul>") // huh
 
 	requestURI, err := url.ParseRequestURI(req.RequestURI)
 
