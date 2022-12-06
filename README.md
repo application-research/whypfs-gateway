@@ -26,4 +26,5 @@ go build -tags netgo -ldflags '-s -w' -o whypfs-gw
 # Serve files
 ![image](https://user-images.githubusercontent.com/4479171/205086971-5b3a67ae-3ac3-42f9-961a-0ef22fae5f32.png)
 
-# Serve Dirs (WIP)
+# Serve Directories
+![image](https://user-images.githubusercontent.com/4479171/205777409-45045f54-1c4a-4373-a7ee-d38440dd9a3e.png)
