@@ -6,16 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	whypfs "github.com/application-research/whypfs-core"
-	"github.com/gabriel-vasile/mimetype"
-	cid2 "github.com/ipfs/go-cid"
-	mdagipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-unixfs"
-	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"golang.org/x/xerrors"
 	"io"
 	"net/http"
 	_ "net/http"
@@ -27,6 +17,19 @@ import (
 	"syscall"
 	"time"
 	"whypfs-gateway/gateway"
+
+	whypfs "github.com/application-research/whypfs-core"
+	"github.com/gabriel-vasile/mimetype"
+	cid2 "github.com/ipfs/go-cid"
+	mdagipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-unixfs"
+	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -52,6 +55,32 @@ func LoopForever() {
 	fmt.Printf("Exiting infinite loop received OsSignal\n")
 }
 
+// A list of peer addresses that are used to bootstrap the network
+var defaultTestBootstrapPeers []multiaddr.Multiaddr
+
+// Creating a list of multiaddresses that are used to bootstrap the network.
+func BootstrapEstuaryPeers() []peer.AddrInfo {
+
+	for _, s := range []string{
+		"/ip4/145.40.90.135/tcp/6746/p2p/12D3KooWNTiHg8eQsTRx8XV7TiJbq3379EgwG6Mo3V3MdwAfThsx",
+
+		"/ip4/139.178.68.217/tcp/6744/p2p/12D3KooWCVXs8P7iq6ao4XhfAmKWrEeuKFWCJgqe9jGDMTqHYBjw",
+		"/ip4/147.75.49.71/tcp/6745/p2p/12D3KooWGBWx9gyUFTVQcKMTenQMSyE2ad9m7c9fpjS4NMjoDien",
+		"/ip4/147.75.86.255/tcp/6745/p2p/12D3KooWFrnuj5o3tx4fGD2ZVJRyDqTdzGnU3XYXmBbWbc8Hs8Nd",
+		"/ip4/3.134.223.177/tcp/6745/p2p/12D3KooWN8vAoGd6eurUSidcpLYguQiGZwt4eVgDvbgaS7kiGTup",
+		"/ip4/35.74.45.12/udp/6746/quic/p2p/12D3KooWLV128pddyvoG6NBvoZw7sSrgpMTPtjnpu3mSmENqhtL7",
+	} {
+		ma, err := multiaddr.NewMultiaddr(s)
+		if err != nil {
+			panic(err)
+		}
+		defaultTestBootstrapPeers = append(defaultTestBootstrapPeers, ma)
+	}
+
+	peers, _ := peer.AddrInfosFromP2pAddrs(defaultTestBootstrapPeers...)
+	return peers
+}
+
 func GatewayRoutersConfig() {
 	// Echo instance
 	e := echo.New()
@@ -68,7 +97,8 @@ func GatewayRoutersConfig() {
 		Datastore: whypfs.NewInMemoryDatastore(),
 	})
 
-	whypfsPeer.BootstrapPeers(whypfs.DefaultBootstrapPeers())
+	// whypfsPeer.BootstrapPeers(whypfs.DefaultBootstrapPeers())
+	whypfsPeer.BootstrapPeers(BootstrapEstuaryPeers())
 
 	node = whypfsPeer
 
