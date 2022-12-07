@@ -83,6 +83,7 @@ func LoopForever() {
 func GatewayRoutersConfig() {
 	// Echo instance
 	e := echo.New()
+	e.File("/", "templates/index.html")
 
 	// Middleware
 	e.Use(middleware.Logger())
@@ -107,6 +108,7 @@ func GatewayRoutersConfig() {
 
 	// Routes
 	//e.GET("/gw/:path", OriginalGatewayHandler)
+
 	e.GET("/gw/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
@@ -181,13 +183,6 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 		panic(err)
 	}
 	c.Response().Write(content)
-	// This works but let's comment it out. We need the gateway to have hot cache at least!
-	//fmt.Println("DELETING: ---- " + cid.String())
-	//err = node.Blockstore.DeleteBlock(c.Request().Context(), cid) // delete the block after serving it. Don't need to keep it if it's on AR!
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Println("DELETED: --- " + cid.String())
 	return nil
 }
 
