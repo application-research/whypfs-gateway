@@ -6,18 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	whypfs "github.com/application-research/whypfs-core"
-	"github.com/gabriel-vasile/mimetype"
-	cid2 "github.com/ipfs/go-cid"
-	mdagipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-unixfs"
-	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 	"html/template"
 	"io"
 	"net/http"
@@ -30,6 +18,20 @@ import (
 	"syscall"
 	"time"
 	"whypfs-gateway/gateway"
+
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
+
+	whypfs "github.com/application-research/whypfs-core"
+	"github.com/gabriel-vasile/mimetype"
+	cid2 "github.com/ipfs/go-cid"
+	mdagipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-unixfs"
+	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -88,6 +90,7 @@ func GatewayRoutersConfig() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Pre(middleware.RemoveTrailingSlash())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
