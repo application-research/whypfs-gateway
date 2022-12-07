@@ -26,6 +26,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	cid2 "github.com/ipfs/go-cid"
 	mdagipld "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
 	uio "github.com/ipfs/go-unixfs/io"
@@ -34,11 +35,29 @@ import (
 	"golang.org/x/xerrors"
 )
 
+type HttpError struct {
+	Code    int    `json:"code,omitempty"`
+	Reason  string `json:"reason"`
+	Details string `json:"details"`
+}
+
+func (he HttpError) Error() string {
+	if he.Details == "" {
+		return he.Reason
+	}
+	return he.Reason + ": " + he.Details
+}
+
+type HttpErrorResponse struct {
+	Error HttpError `json:"error"`
+}
+
 var (
 	node *whypfs.Node
 	gw   *gateway.GatewayHandler
 	// OsSignal signal used to shutdown
 	OsSignal chan os.Signal
+	log      = logging.Logger("gateway")
 )
 
 var defaultTestBootstrapPeers []multiaddr.Multiaddr
@@ -82,6 +101,45 @@ func LoopForever() {
 	fmt.Printf("Exiting infinite loop received OsSignal\n")
 }
 
+func ErrorHandler(err error, c echo.Context) {
+	var httpRespErr *HttpError
+	if xerrors.As(err, &httpRespErr) {
+		log.Errorf("handler error: %s", err)
+		if err := c.JSON(httpRespErr.Code, HttpErrorResponse{Error: *httpRespErr}); err != nil {
+			log.Errorf("handler error: %s", err)
+			return
+		}
+		return
+	}
+
+	var echoErr *echo.HTTPError
+	if xerrors.As(err, &echoErr) {
+		if err := c.JSON(echoErr.Code, HttpErrorResponse{
+			Error: HttpError{
+				Code:    echoErr.Code,
+				Reason:  http.StatusText(echoErr.Code),
+				Details: echoErr.Message.(string),
+			},
+		}); err != nil {
+			log.Errorf("handler error: %s", err)
+			return
+		}
+		return
+	}
+
+	log.Errorf("handler error: %s", err)
+	if err := c.JSON(http.StatusInternalServerError, HttpErrorResponse{
+		Error: HttpError{
+			Code:    http.StatusInternalServerError,
+			Reason:  http.StatusText(http.StatusInternalServerError),
+			Details: err.Error(),
+		},
+	}); err != nil {
+		log.Errorf("handler error: %s", err)
+		return
+	}
+}
+
 func GatewayRoutersConfig() {
 	// Echo instance
 	e := echo.New()
@@ -91,6 +149,7 @@ func GatewayRoutersConfig() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Pre(middleware.RemoveTrailingSlash())
+	e.HTTPErrorHandler = ErrorHandler
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -149,13 +208,13 @@ func GatewayDirResolverCheckHandler(c echo.Context) error {
 	cid, err := cid2.Decode(p)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 	//	 check if file or dir.
 
 	rscDir, err := node.GetDirectoryWithCid(c.Request().Context(), cid)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	rscDir.GetNode()
@@ -173,17 +232,17 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 	cid, err := cid2.Decode(p)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 	//	 check if file or dir.
 	rsc, err := node.GetFile(c.Request().Context(), cid)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 	content, err := io.ReadAll(rsc)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	c.Response().Write(content)
 	return nil
@@ -198,7 +257,13 @@ func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 
 	sp := strings.Split(p, "/")
 	cid, err := cid2.Decode(sp[0])
+	if err != nil {
+		return err
+	}
 	nd, err := node.Get(c.Request().Context(), cid)
+	if err != nil {
+		return err
+	}
 
 	if err != nil {
 		panic(err)
