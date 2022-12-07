@@ -15,7 +15,7 @@
 
 </head>
 <body>
-<div style="text-align: center; padding-top:25%;">
+<div style="text-align: center; padding-top:10%;">
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
@@ -26,7 +26,7 @@
                     Key in your CID and explore!
                 </p>
                 <p>
-                    <input id="cid" type="text" style="width:50%;text-align: center; height:40px;"/>
+                    <input id="cid" type="text" style="width:50%;text-align: center; height:40px;" required="true" />
                 </p>
                 <button type="button" class="btn btn-success" onclick="redirect()">
                     View
@@ -40,6 +40,10 @@
 <script type="text/javascript">
     function redirect() {
         var cid = document.getElementById("cid").value;
+        if (cid == "") {
+            alert("Please enter a CID");
+            return;
+        }
         window.location.href = "/gw/ipfs/" + cid;
     }
 </script>
