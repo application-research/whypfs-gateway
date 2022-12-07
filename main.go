@@ -6,6 +6,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	whypfs "github.com/application-research/whypfs-core"
+	"github.com/gabriel-vasile/mimetype"
+	cid2 "github.com/ipfs/go-cid"
+	mdagipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-unixfs"
+	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/xerrors"
+	"html/template"
 	"io"
 	"net/http"
 	_ "net/http"
@@ -17,19 +30,6 @@ import (
 	"syscall"
 	"time"
 	"whypfs-gateway/gateway"
-
-	whypfs "github.com/application-research/whypfs-core"
-	"github.com/gabriel-vasile/mimetype"
-	cid2 "github.com/ipfs/go-cid"
-	mdagipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-unixfs"
-	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -39,23 +39,6 @@ var (
 	OsSignal chan os.Signal
 )
 
-func main() {
-	OsSignal = make(chan os.Signal, 1)
-	GatewayRoutersConfig()
-	LoopForever()
-}
-
-// LoopForever on signal processing
-func LoopForever() {
-	fmt.Printf("Entering infinite loop\n")
-
-	signal.Notify(OsSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
-	_ = <-OsSignal
-
-	fmt.Printf("Exiting infinite loop received OsSignal\n")
-}
-
-// A list of peer addresses that are used to bootstrap the network
 var defaultTestBootstrapPeers []multiaddr.Multiaddr
 
 // Creating a list of multiaddresses that are used to bootstrap the network.
@@ -81,6 +64,22 @@ func BootstrapEstuaryPeers() []peer.AddrInfo {
 	return peers
 }
 
+func main() {
+	OsSignal = make(chan os.Signal, 1)
+	GatewayRoutersConfig()
+	LoopForever()
+}
+
+// LoopForever on signal processing
+func LoopForever() {
+	fmt.Printf("Entering infinite loop\n")
+
+	signal.Notify(OsSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+	_ = <-OsSignal
+
+	fmt.Printf("Exiting infinite loop received OsSignal\n")
+}
+
 func GatewayRoutersConfig() {
 	// Echo instance
 	e := echo.New()
@@ -97,7 +96,6 @@ func GatewayRoutersConfig() {
 		Datastore: whypfs.NewInMemoryDatastore(),
 	})
 
-	// whypfsPeer.BootstrapPeers(whypfs.DefaultBootstrapPeers())
 	whypfsPeer.BootstrapPeers(BootstrapEstuaryPeers())
 
 	node = whypfsPeer
@@ -109,8 +107,8 @@ func GatewayRoutersConfig() {
 
 	// Routes
 	//e.GET("/gw/:path", OriginalGatewayHandler)
-	e.GET("/gw//ipfs/:path", GatewayResolverCheckHandler)
-	e.GET("/gw/:path", GatewayResolverCheckHandler)
+	e.GET("/gw/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
+	e.GET("/gw/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
 	e.GET("/gw/file/:path", GatewayFileResolverCheckHandler)
 
@@ -183,17 +181,18 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 		panic(err)
 	}
 	c.Response().Write(content)
-	fmt.Println("DELETING: ---- " + cid.String())
-	err = node.Blockstore.DeleteBlock(c.Request().Context(), cid) // delete the block after serving it. Don't need to keep it if it's on AR!
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("DELETED: --- " + cid.String())
+	// This works but let's comment it out. We need the gateway to have hot cache at least!
+	//fmt.Println("DELETING: ---- " + cid.String())
+	//err = node.Blockstore.DeleteBlock(c.Request().Context(), cid) // delete the block after serving it. Don't need to keep it if it's on AR!
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println("DELETED: --- " + cid.String())
 	return nil
 }
 
-// It takes a request, and forwards it to the gateway
-func GatewayResolverCheckHandler(c echo.Context) error {
+// `GatewayResolverCheckHandlerDirectPath` is a function that takes a `echo.Context` and returns an `error`
+func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 	ctx := c.Request().Context()
 	p := c.Param("path")
 	req := c.Request().Clone(c.Request().Context())
@@ -203,11 +202,15 @@ func GatewayResolverCheckHandler(c echo.Context) error {
 	cid, err := cid2.Decode(sp[0])
 	nd, err := node.Get(c.Request().Context(), cid)
 
+	if err != nil {
+		panic(err)
+	}
+
 	switch nd := nd.(type) {
 	case *merkledag.ProtoNode:
 		n, err := unixfs.FSNodeFromBytes(nd.Data())
 		if err != nil {
-			return err
+			panic(err)
 		}
 		if n.IsDir() {
 			return ServeDir(ctx, nd, c.Response().Writer, req)
@@ -219,7 +222,7 @@ func GatewayResolverCheckHandler(c echo.Context) error {
 	default:
 		return errors.New("unknown node type")
 	}
-	fmt.Println("serving unixfs", cid)
+
 	dr, err := uio.NewDagReader(ctx, nd, node.DAGService)
 	if err != nil {
 		return err
@@ -232,6 +235,17 @@ func GatewayResolverCheckHandler(c echo.Context) error {
 
 	http.ServeContent(c.Response().Writer, req, cid.String(), time.Time{}, dr)
 	return nil
+}
+
+type Context struct {
+	CustomLinks []CustomLinks
+}
+
+type CustomLinks struct {
+	Href     string
+	HrefCid  string
+	LinkName string
+	Size     string
 }
 
 func ServeDir(ctx context.Context, n mdagipld.Node, w http.ResponseWriter, req *http.Request) error {
@@ -257,19 +271,30 @@ func ServeDir(ctx context.Context, n mdagipld.Node, w http.ResponseWriter, req *
 
 	}
 
-	fmt.Fprintf(w, "<html><body><ul>")
+	templates, err := template.ParseFiles("templates/dir.html")
+	if err != nil {
+		return err
+	}
+
+	links := make([]CustomLinks, 0)
+	templates.Lookup("dir.html")
 
 	requestURI, err := url.ParseRequestURI(req.RequestURI)
 
 	if err := dir.ForEachLink(ctx, func(lnk *mdagipld.Link) error {
 		href := gopath.Join(requestURI.Path, lnk.Name)
-		fmt.Fprintf(w, "<li><a href=\"%s\">%s</a></li>", href, lnk.Name)
+		hrefCid := lnk.Cid.String()
+
+		links = append(links, CustomLinks{Href: href, HrefCid: hrefCid, LinkName: lnk.Name})
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(w, "</ul></body></html>")
+	//fmt.Fprintf(w, "</ul></body></html>")
+	Context := Context{CustomLinks: links}
+	templates.Execute(w, Context)
+
 	return nil
 }
 
