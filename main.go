@@ -173,6 +173,7 @@ func GatewayRoutersConfig() {
 
 	e.GET("/gw/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/:path", GatewayResolverCheckHandlerDirectPath)
+	e.GET("/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
 	e.GET("/gw/file/:path", GatewayFileResolverCheckHandler)
 
