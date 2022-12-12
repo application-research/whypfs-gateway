@@ -6,18 +6,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"html/template"
 	"io"
 	"net/http"
 	_ "net/http"
+	httpprof "net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
 	gopath "path"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
 	"whypfs-gateway/gateway"
+	"whypfs-gateway/metrics"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
@@ -157,6 +161,9 @@ func GatewayRoutersConfig() {
 	whypfsPeer, err := whypfs.NewNode(whypfs.NewNodeParams{
 		Ctx:       ctx,
 		Datastore: whypfs.NewInMemoryDatastore(),
+		Config: &whypfs.Config{
+			Blockstore: "/mnt/data/flatfs",
+		},
 	})
 
 	whypfsPeer.BootstrapPeers(BootstrapEstuaryPeers())
@@ -177,7 +184,32 @@ func GatewayRoutersConfig() {
 	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
 	e.GET("/gw/file/:path", GatewayFileResolverCheckHandler)
 
-	// Upload for testing
+	phandle := promhttp.Handler()
+	e.GET("/debug/metrics/prometheus", func(e echo.Context) error {
+		phandle.ServeHTTP(e.Response().Writer, e.Request())
+
+		return nil
+	})
+
+	e.GET("/debug/metrics", func(e echo.Context) error {
+		return e.JSON(http.StatusOK, "Ok")
+		//return nil
+	})
+
+	e.GET("/debug/metrics", func(e echo.Context) error {
+		metrics.Exporter().ServeHTTP(e.Response().Writer, e.Request())
+		return nil
+	})
+	e.GET("/debug/stack", func(e echo.Context) error {
+		err := writeAllGoroutineStacks(e.Response().Writer)
+		if err != nil {
+			log.Error(err)
+		}
+		return err
+	})
+
+	e.GET("/debug/pprof/:prof", serveProfile) // Upload for testing
+
 	e.POST("/upload", func(c echo.Context) error {
 		file, err := c.FormFile("file")
 		if err != nil {
@@ -198,6 +230,11 @@ func GatewayRoutersConfig() {
 
 	// Start server
 	e.Logger.Fatal(e.Start("0.0.0.0:1313"))
+}
+
+func serveProfile(c echo.Context) error {
+	httpprof.Handler(c.Param("prof")).ServeHTTP(c.Response().Writer, c.Request())
+	return nil
 }
 
 func GatewayDirResolverCheckHandler(c echo.Context) error {
@@ -222,6 +259,24 @@ func GatewayDirResolverCheckHandler(c echo.Context) error {
 
 	c.Response().Write([]byte("nice dir"))
 	return nil
+}
+
+func writeAllGoroutineStacks(w io.Writer) error {
+	buf := make([]byte, 64<<20)
+	for i := 0; ; i++ {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			buf = buf[:n]
+			break
+		}
+		if len(buf) >= 1<<30 {
+			// Filled 1 GB - stop there.
+			break
+		}
+		buf = make([]byte, 2*len(buf))
+	}
+	_, err := w.Write(buf)
+	return err
 }
 
 func GatewayFileResolverCheckHandler(c echo.Context) error {
