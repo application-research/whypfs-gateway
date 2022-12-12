@@ -160,10 +160,7 @@ func GatewayRoutersConfig() {
 
 	whypfsPeer, err := whypfs.NewNode(whypfs.NewNodeParams{
 		Ctx:       ctx,
-		Datastore: whypfs.NewInMemoryDatastore(),
-		Config: &whypfs.Config{
-			Blockstore: "/mnt/data/flatfs",
-		},
+		Datastore: whypfs.NewInMemoryDatastore()
 	})
 
 	whypfsPeer.BootstrapPeers(BootstrapEstuaryPeers())
