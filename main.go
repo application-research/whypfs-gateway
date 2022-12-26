@@ -71,12 +71,15 @@ func BootstrapEstuaryPeers() []peer.AddrInfo {
 
 	for _, s := range []string{
 		"/ip4/145.40.90.135/tcp/6746/p2p/12D3KooWNTiHg8eQsTRx8XV7TiJbq3379EgwG6Mo3V3MdwAfThsx",
-
 		"/ip4/139.178.68.217/tcp/6744/p2p/12D3KooWCVXs8P7iq6ao4XhfAmKWrEeuKFWCJgqe9jGDMTqHYBjw",
 		"/ip4/147.75.49.71/tcp/6745/p2p/12D3KooWGBWx9gyUFTVQcKMTenQMSyE2ad9m7c9fpjS4NMjoDien",
 		"/ip4/147.75.86.255/tcp/6745/p2p/12D3KooWFrnuj5o3tx4fGD2ZVJRyDqTdzGnU3XYXmBbWbc8Hs8Nd",
 		"/ip4/3.134.223.177/tcp/6745/p2p/12D3KooWN8vAoGd6eurUSidcpLYguQiGZwt4eVgDvbgaS7kiGTup",
 		"/ip4/35.74.45.12/udp/6746/quic/p2p/12D3KooWLV128pddyvoG6NBvoZw7sSrgpMTPtjnpu3mSmENqhtL7",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
 	} {
 		ma, err := multiaddr.NewMultiaddr(s)
 		if err != nil {
@@ -218,6 +221,8 @@ func GatewayRoutersConfig() {
 		}
 
 		addNode, err := node.AddPinFile(c.Request().Context(), src, nil)
+
+		//node.Blockservice.DeleteBlock(ctx, addNode.Cid())
 		if err != nil {
 			return err
 		}
@@ -420,7 +425,7 @@ func SniffMimeType(w http.ResponseWriter, dr uio.DagReader) error {
 
 	// Calculate deterministic value for Content-Type HTTP header
 	// (we prefer to do it here, rather than using implicit sniffing in http.ServeContent)
-	var ctype string
+	var ctype string /**/
 	// uses https://github.com/gabriel-vasile/mimetype library to determine the content type.
 	// Fixes https://github.com/ipfs/kubo/issues/7252
 	mimeType, err := mimetype.DetectReader(dr)
