@@ -206,6 +206,7 @@ func (gw *GatewayHandler) resolvePath(ctx context.Context, p string) (cid.Cid, e
 	pp, err := path.ParsePath("/" + p)
 	if err != nil {
 		fmt.Println("2")
+
 		return cid.Undef, fmt.Errorf("failed to parse request path: %w", err)
 	}
 

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"html/template"
@@ -93,8 +94,13 @@ func BootstrapEstuaryPeers() []peer.AddrInfo {
 }
 
 func main() {
+
+	// add a flag to set the repo.
+	repo := flag.String("repo", "", "set the repo path")
+	flag.Parse()
+
 	OsSignal = make(chan os.Signal, 1)
-	GatewayRoutersConfig()
+	GatewayRoutersConfig(repo)
 	LoopForever()
 }
 
@@ -147,7 +153,7 @@ func ErrorHandler(err error, c echo.Context) {
 	}
 }
 
-func GatewayRoutersConfig() {
+func GatewayRoutersConfig(repo *string) {
 	// Echo instance
 	e := echo.New()
 	e.File("/", "templates/index.html")
@@ -161,9 +167,11 @@ func GatewayRoutersConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	fmt.Println("REPO ", *repo)
 	whypfsPeer, err := whypfs.NewNode(whypfs.NewNodeParams{
 		Ctx:       ctx,
 		Datastore: whypfs.NewInMemoryDatastore(),
+		Repo:      *repo,
 	})
 
 	whypfsPeer.BootstrapPeers(BootstrapEstuaryPeers())
@@ -310,6 +318,7 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 	ctx := c.Request().Context()
 	p := c.Param("path")
+	fmt.Println("path >>>>>>>" + p)
 	req := c.Request().Clone(c.Request().Context())
 	req.URL.Path = p
 
@@ -319,6 +328,7 @@ func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 		return err
 	}
 	nd, err := node.Get(c.Request().Context(), cid)
+
 	if err != nil {
 		return err
 	}
