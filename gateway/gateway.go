@@ -88,7 +88,6 @@ func (gw *GatewayHandler) handleRequest(ctx context.Context, w http.ResponseWrit
 
 func (gw *GatewayHandler) serveUnixfs(ctx context.Context, cc cid.Cid, w http.ResponseWriter, req *http.Request) error {
 	nd, err := gw.dserv.Get(ctx, cc)
-	fmt.Println("nd", nd)
 	if err != nil {
 		return err
 	}
@@ -109,7 +108,6 @@ func (gw *GatewayHandler) serveUnixfs(ctx context.Context, cc cid.Cid, w http.Re
 	default:
 		return errors.New("unknown node type")
 	}
-	fmt.Println("serving unixfs", cc)
 	dr, err := uio.NewDagReader(ctx, nd, gw.dserv)
 	if err != nil {
 		return err
@@ -202,10 +200,8 @@ func (gw *GatewayHandler) resolvePath(ctx context.Context, p string) (cid.Cid, e
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to parse request path: %w", err)
 	}
-	fmt.Println(p)
 	pp, err := path.ParsePath("/" + p)
 	if err != nil {
-		fmt.Println("2")
 		return cid.Undef, fmt.Errorf("failed to parse request path: %w", err)
 	}
 
@@ -230,8 +226,7 @@ func ParsePath(p string) (string, cid.Cid, []string, error) {
 	if len(parts) < 2 {
 		return "", cid.Undef, nil, fmt.Errorf("invalid gateway path")
 	}
-	fmt.Println("part 0", parts[0])
-	fmt.Println("part 1", parts[1])
+
 	protocol := parts[0]
 
 	cc, err := cid.Decode(parts[1])
