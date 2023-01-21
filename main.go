@@ -166,8 +166,6 @@ func GatewayRoutersConfig(repo *string) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	fmt.Println("REPO ", *repo)
 	whypfsPeer, err := whypfs.NewNode(whypfs.NewNodeParams{
 		Ctx:       ctx,
 		Datastore: whypfs.NewInMemoryDatastore(),
@@ -318,7 +316,6 @@ func GatewayFileResolverCheckHandler(c echo.Context) error {
 func GatewayResolverCheckHandlerDirectPath(c echo.Context) error {
 	ctx := c.Request().Context()
 	p := c.Param("path")
-	fmt.Println("path >>>>>>>" + p)
 	req := c.Request().Clone(c.Request().Context())
 	req.URL.Path = p
 
