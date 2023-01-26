@@ -236,10 +236,17 @@ func GatewayRoutersConfig(repo *string) {
 		return nil
 	})
 
+	e.GET("/health", handleHealth)
+
 	// Start server
 	e.Logger.Fatal(e.Start("0.0.0.0:1313"))
 }
 
+func handleHealth(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]string{
+		"status": "ok",
+	})
+}
 func serveProfile(c echo.Context) error {
 	httpprof.Handler(c.Param("prof")).ServeHTTP(c.Response().Writer, c.Request())
 	return nil
