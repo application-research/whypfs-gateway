@@ -186,6 +186,7 @@ func GatewayRoutersConfig(repo *string) {
 	//e.GET("/gw/:path", OriginalGatewayHandler)
 
 	e.GET("/gw/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
+	e.HEAD("/gw/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/ipfs/:path", GatewayResolverCheckHandlerDirectPath)
 	e.GET("/gw/dir/:path", GatewayDirResolverCheckHandler)
