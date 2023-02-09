@@ -159,6 +159,7 @@ func GatewayRoutersConfig(repo *string) {
 	e.File("/", "templates/index.html")
 
 	// Middleware
+	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Pre(middleware.RemoveTrailingSlash())
