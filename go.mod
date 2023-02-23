@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
-	github.com/application-research/whypfs-core v0.1.2-0.20230223001729-18fc2baa1eac
+	github.com/application-research/whypfs-core v0.1.2-0.20230223044137-ade3e11da9cc
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/ipfs/go-blockservice v0.4.0
 	github.com/ipfs/go-cid v0.3.2
