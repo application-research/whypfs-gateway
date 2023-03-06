@@ -7,6 +7,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/ipfs/go-merkledag"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"html/template"
 	"io"
@@ -23,9 +26,6 @@ import (
 	"time"
 	"whypfs-gateway/gateway"
 	"whypfs-gateway/metrics"
-
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
 
 	whypfs "github.com/application-research/whypfs-core"
 	"github.com/gabriel-vasile/mimetype"
