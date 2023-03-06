@@ -32,7 +32,6 @@ import (
 	cid2 "github.com/ipfs/go-cid"
 	mdagipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
 	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/labstack/echo/v4"
@@ -235,6 +234,20 @@ func GatewayRoutersConfig(repo *string) {
 			return err
 		}
 		c.Response().Write([]byte(addNode.Cid().String()))
+		return nil
+	})
+
+	// delete
+	// curl -X DELETE http://localhost:1313/delete/<CID>
+	e.DELETE("/delete/:cid", func(c echo.Context) error {
+		cid, err := cid2.Decode(c.Param("cid"))
+		if err != nil {
+			return err
+		}
+		err = node.Blockservice.DeleteBlock(c.Request().Context(), cid)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 
